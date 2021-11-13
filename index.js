@@ -43,12 +43,12 @@ async function run() {
         });
 
         // admin can delete products
-        app.delete("/products/:id", async (req, res) => {
-            const id = req.params.id;
-            const query = { _id: ObjectId(id) };
-            const result = await productsCollection.deleteOne(query);
-            res.json(result);
-        });
+        // app.delete("/products/:id", async (req, res) => {
+        //     const id = req.params.id;
+        //     const query = { _id: ObjectId(id) };
+        //     const result = await productsCollection.deleteOne(query);
+        //     res.json(result);
+        // });
 
         // get one product
         app.get("/placeOrder/:id", async (req, res) => {
