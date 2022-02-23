@@ -1,6 +1,8 @@
 const express = require("express");
 const { MongoClient } = require("mongodb");
 const cors = require("cors");
+const bcrypt = require("bcrypt");
+const jwt = require("jsonwebtoken");
 const app = express();
 const ObjectId = require("mongodb").ObjectId;
 require("dotenv").config();
@@ -18,6 +20,20 @@ const client = new MongoClient(uri, {
     useUnifiedTopology: true,
 });
 
+//JWT Auth
+const generateJWTToken = (user) => {
+    return jwt.sign(user, process.env.TOKEN_SECRET, { expiresIn: "500s" });
+};
+
+const verifyJWTToken = (req, res, next) => {
+    try {
+        const { authorization } = req.headers;
+        const decoded = jwt.verify(authorization, process.env.TOKEN_SECRET);
+        req.decodedEmail = decoded.email;
+        next();
+    } catch {}
+};
+
 async function run() {
     try {
         await client.connect();
@@ -27,6 +43,48 @@ async function run() {
         const placeOrdersCollection = database.collection("placeOrder");
         const usersCollection = database.collection("users");
         const usersReviewCollection = database.collection("reviews");
+
+        // Manual Authentication
+        app.post("/userRegister", async (req, res) => {
+            const hashedPass = await bcrypt.hash(req.body.password, 10);
+            const newUser = {
+                displayName: req.body.name,
+                password: hashedPass,
+                email: req.body.email,
+            };
+            const result = await usersCollection.insertOne(newUser);
+            res.json(result);
+        });
+
+        app.post("/userLogin", async (req, res) => {
+            const userInfo = req.body;
+            const newUser = {
+                email: userInfo.email,
+                password: "jwttoken",
+            };
+            const token = generateJWTToken(newUser);
+            const query = { email: userInfo.email };
+            const user = await usersCollection.findOne(query);
+
+            const matchedUser = {
+                displayName: user.displayName,
+                email: user.email,
+            };
+            console.log("match", matchedUser);
+
+            const passValidate = await bcrypt.compare(
+                userInfo.password,
+                user.password
+            );
+
+            if (passValidate) {
+                console.log("password milche");
+                res.json({ token: token, status: "login", user: matchedUser });
+            } else {
+                console.log("password mile nai");
+                res.json({ status: "notlogin" });
+            }
+        });
 
         // get all products
         app.get("/products", async (req, res) => {
@@ -105,26 +163,26 @@ async function run() {
         //     res.send(reviews);
         // })
 
-        // post users information
-        app.post("/users", async (req, res) => {
-            const user = req.body;
-            const result = await usersCollection.insertOne(user);
-            res.json(result);
-        });
+        // // post users information
+        // app.post("/users", async (req, res) => {
+        //     const user = req.body;
+        //     const result = await usersCollection.insertOne(user);
+        //     res.json(result);
+        // });
 
-        // filter users information for register or login
-        app.put("/users", async (req, res) => {
-            const user = req.body;
-            const filter = { email: user.email };
-            const options = { upsert: true };
-            const updateDoc = { $set: user };
-            const result = await usersCollection.updateOne(
-                filter,
-                updateDoc,
-                options
-            );
-            res.json(result);
-        });
+        // // filter users information for register or login
+        // app.put("/users", async (req, res) => {
+        //     const user = req.body;
+        //     const filter = { email: user.email };
+        //     const options = { upsert: true };
+        //     const updateDoc = { $set: user };
+        //     const result = await usersCollection.updateOne(
+        //         filter,
+        //         updateDoc,
+        //         options
+        //     );
+        //     res.json(result);
+        // });
 
         // add role to users information
         app.put("/users/admin", async (req, res) => {
