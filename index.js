@@ -20,7 +20,7 @@ const client = new MongoClient(uri, {
     useUnifiedTopology: true,
 });
 
-//JWT Auth
+//jwt authentication token
 const generateJWTToken = (user) => {
     return jwt.sign(user, process.env.TOKEN_SECRET, { expiresIn: "500s" });
 };
